@@ -143,7 +143,7 @@ func newOIDCAuthenticator(c map[string]interface{}, tenant string,
 		Scopes:       []string{"openid", "profile", "email", "groups"},
 	}
 
-	verifier := provider.Verifier(&oidc.Config{ClientID: config.ClientID})
+	verifier := provider.Verifier(&oidc.Config{ClientID: config.ClientID, SkipClientIDCheck: true})
 
 	oidcProvider := &oidcAuthenticator{
 		tenant:       tenant,
