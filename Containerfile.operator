@@ -3,7 +3,11 @@
 
 FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_1.21 AS builder
 
-RUN apk add --update --no-cache ca-certificates tzdata git make bash && update-ca-certificates
+RUN yum update -y && \
+yum install -y ca-certificates tzdata git make bash && \
+update-ca-certificates && \
+yum clean all
+
 
 ADD . /opt
 WORKDIR /opt
