@@ -3,10 +3,10 @@
 
 FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_1.22 AS builder
 
-RUN yum update -y && \
-yum install -y ca-certificates tzdata git make bash && \
+RUN microdnf update && \
+microdnf install ca-certificates tzdata git make bash && \
 update-ca-certificates && \
-yum clean all
+microdnf clean all
 
 
 ADD . /opt
