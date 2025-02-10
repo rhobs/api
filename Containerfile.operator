@@ -3,8 +3,8 @@
 
 FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_1.22 AS builder
 
-RUN microdnf update && \
-microdnf install ca-certificates tzdata git make bash && \
+RUN microdnf -y  update && \
+microdnf -y install ca-certificates tzdata git make bash && \
 update-ca-certificates && \
 microdnf clean all
 
