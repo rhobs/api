@@ -3,20 +3,19 @@
 
 FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_1.22 AS builder
 
-RUN dnf -y  update && \
+RUN dnf -y update && \
 dnf -y install ca-certificates tzdata git make bash && \
-update-ca-certificates && \
+update-ca-trust && \
 dnf clean all
-
 
 ADD . /opt
 WORKDIR /opt
 
-RUN git update-index --refresh; make build
+RUN git update-index --refresh; go mod vendor && make build
 
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest AS runner
 
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /etc/ssl/certs/ca-bundle.crt /etc/ssl/certs/
 COPY --from=builder /opt/observatorium-api /bin/observatorium-api
 
 ARG BUILD_DATE
@@ -29,6 +28,7 @@ USER 10000:10000
 LABEL name="observatorium/api" \
   description="Observatorium API" \
   summary="observatorium-api" \
+  com.redhat.component="rhobs-api" \
   io.k8s.display-name="observatorium/api" \
   io.k8s.description="Observatorium API" \
   maintainer="Observatorium <team-monitoring@redhat.com>" \
