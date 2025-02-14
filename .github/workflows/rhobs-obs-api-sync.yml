@@ -27,9 +27,9 @@ jobs:
       - name: Sync with upstream/main
         run: |
           git fetch upstream main
-          git checkout -B main origin/main
+          git checkout -B synced-main origin/main
           git merge upstream/main
-          git push origin main
+          git push origin synced-main
 
       - name: Clean up
         run: |
