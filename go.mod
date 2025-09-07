@@ -26,7 +26,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/metalmatze/signal v0.0.0-20210307161603-1c9aa721a97a
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
-	github.com/mwitkow/grpc-proxy v0.0.0-20181017164139-0f1106ef9c76
+	github.com/mwitkow/grpc-proxy v0.0.0-20250813121105-2866842de9a5
 	github.com/oklog/run v1.2.0
 	github.com/open-policy-agent/opa v1.5.1
 	github.com/pkg/errors v0.9.1
