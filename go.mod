@@ -1,8 +1,6 @@
 module github.com/observatorium/api
 
-go 1.23.8
-
-toolchain go1.23.9
+go 1.25
 
 require (
 	github.com/brancz/kube-rbac-proxy v0.19.0
@@ -118,7 +116,7 @@ require (
 	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kataras/blocks v0.0.7 // indirect
-	github.com/kataras/golog v0.1.9 // indirect
+	github.com/kataras/golog v0.1.15 // indirect
 	github.com/kataras/iris/v12 v12.2.6-0.20230908161203-24ba4e8933b9 // indirect
 	github.com/kataras/pio v0.0.12 // indirect
 	github.com/kataras/sitemap v0.0.6 // indirect
@@ -175,7 +173,7 @@ require (
 	golang.org/x/crypto v0.39.0 // indirect
 	golang.org/x/net v0.41.0 // indirect
 	golang.org/x/sync v0.15.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/term v0.32.0 // indirect
 	golang.org/x/text v0.26.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
