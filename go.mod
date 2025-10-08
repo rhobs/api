@@ -1,8 +1,8 @@
 module github.com/observatorium/api
 
-go 1.23.8
+go 1.24.0
 
-toolchain go1.23.9
+toolchain go1.24.6
 
 require (
 	github.com/brancz/kube-rbac-proxy v0.19.0
@@ -178,7 +178,7 @@ require (
 	golang.org/x/sys v0.33.0 // indirect
 	golang.org/x/term v0.32.0 // indirect
 	golang.org/x/text v0.26.0 // indirect
-	golang.org/x/time v0.12.0 // indirect
+	golang.org/x/time v0.14.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
