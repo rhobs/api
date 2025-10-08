@@ -1,8 +1,8 @@
 module github.com/observatorium/api
 
-go 1.23.8
+go 1.24.0
 
-toolchain go1.23.9
+toolchain go1.24.6
 
 require (
 	github.com/brancz/kube-rbac-proxy v0.19.0
@@ -44,7 +44,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.36.0
 	go.opentelemetry.io/otel/trace v1.36.0
 	go.uber.org/automaxprocs v1.6.0
-	golang.org/x/oauth2 v0.30.0
+	golang.org/x/oauth2 v0.32.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20250603155806-513f23925822
 	google.golang.org/grpc v1.73.0
 	google.golang.org/protobuf v1.36.6
