@@ -22,7 +22,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/grafana/tempo v1.5.1-0.20241219111835-fa9b7ad5ad34
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
-	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/metalmatze/signal v0.0.0-20210307161603-1c9aa721a97a
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
