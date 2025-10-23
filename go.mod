@@ -1,12 +1,12 @@
 module github.com/observatorium/api
 
-go 1.23.8
+go 1.24.0
 
-toolchain go1.23.9
+toolchain go1.24.6
 
 require (
 	github.com/brancz/kube-rbac-proxy v0.19.0
-	github.com/coreos/go-oidc/v3 v3.15.0
+	github.com/coreos/go-oidc/v3 v3.16.0
 	github.com/deepmap/oapi-codegen v1.16.3
 	github.com/efficientgo/core v1.0.0-rc.3
 	github.com/efficientgo/e2e v0.14.1-0.20230413162904-ebc233c5a32f
@@ -84,7 +84,7 @@ require (
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/gin-gonic/gin v1.9.1 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
-	github.com/go-jose/go-jose/v4 v4.0.5 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
