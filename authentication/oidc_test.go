@@ -88,7 +88,7 @@ func TestOIDCPathMatching(t *testing.T) {
 			}
 
 			if shouldSkip != tt.expectSkip {
-				t.Errorf("Expected skip=%v, got skip=%v for path %q with patterns %v", 
+				t.Errorf("Expected skip=%v, got skip=%v for path %q with patterns %v",
 					tt.expectSkip, shouldSkip, tt.requestPath, tt.pathPatterns)
 			}
 		})
@@ -98,11 +98,11 @@ func TestOIDCPathMatching(t *testing.T) {
 func TestOIDCConfigPathPatternsIntegration(t *testing.T) {
 	// Test that path patterns are correctly passed to the OIDC authenticator config
 	tests := []struct {
-		name         string
-		configData   map[string]interface{}
-		expectError  bool
-		expectPaths  []string
-		description  string
+		name        string
+		configData  map[string]interface{}
+		expectError bool
+		expectPaths []string
+		description string
 	}{
 		{
 			name: "valid_path_patterns",
@@ -116,7 +116,7 @@ func TestOIDCConfigPathPatternsIntegration(t *testing.T) {
 			description: "Valid path patterns should be accepted",
 		},
 		{
-			name: "empty_path_patterns", 
+			name: "empty_path_patterns",
 			configData: map[string]interface{}{
 				"pathPatterns": []string{},
 				"clientID":     "test-client",
@@ -184,6 +184,9 @@ func TestOIDCConfigPathPatternsIntegration(t *testing.T) {
 			if len(config.PathPatterns) != len(tt.expectPaths) {
 				t.Errorf("Expected %d path patterns, got %d", len(tt.expectPaths), len(config.PathPatterns))
 			}
+			if len(pathMatchers) != len(tt.expectPaths) {
+				t.Errorf("Expected %d compiled matchers, got %d", len(tt.expectPaths), len(pathMatchers))
+			}
 
 			for i, expected := range tt.expectPaths {
 				if i >= len(config.PathPatterns) {
@@ -214,7 +217,7 @@ func TestOIDCMiddlewareActual(t *testing.T) {
 			expectSkipped: true,
 		},
 		{
-			name:          "matching_path_not_skipped", 
+			name:          "matching_path_not_skipped",
 			pathPatterns:  []string{"/api/.*/query"},
 			requestPath:   "/api/metrics/v1/query",
 			expectSkipped: false,
@@ -266,4 +269,3 @@ func TestOIDCMiddlewareActual(t *testing.T) {
 		})
 	}
 }
-

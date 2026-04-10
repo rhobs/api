@@ -10,10 +10,11 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
+
 	"github.com/observatorium/api/test/testtls"
 )
 
-// Helper function to generate test certificates using the existing testtls package
+// Helper function to generate test certificates using the existing testtls package.
 func setupTestCertificatesWithFile(t testing.TB) (clientCert tls.Certificate, caPath string, cleanup func()) {
 	t.Helper()
 
@@ -26,10 +27,10 @@ func setupTestCertificatesWithFile(t testing.TB) (clientCert tls.Certificate, ca
 	// Generate certificates using the testtls package
 	err = testtls.GenerateCerts(
 		tmpDir,
-		"test-api",     // API common name
+		"test-api",                         // API common name
 		[]string{"localhost", "127.0.0.1"}, // API SANs
-		"test-dex",     // Dex common name
-		[]string{"localhost"}, // Dex SANs
+		"test-dex",                         // Dex common name
+		[]string{"localhost"},              // Dex SANs
 	)
 	if err != nil {
 		os.RemoveAll(tmpDir)
@@ -70,12 +71,12 @@ func TestMTLSAuthenticator_PathBasedAuthentication(t *testing.T) {
 	defer cleanup()
 
 	tests := []struct {
-		name           string
-		pathPatterns   []string
-		requestPath    string
-		expectMTLS     bool
-		expectError    bool
-		description    string
+		name         string
+		pathPatterns []string
+		requestPath  string
+		expectMTLS   bool
+		expectError  bool
+		description  string
 	}{
 		{
 			name:         "no_patterns_enforces_all_paths",
@@ -139,7 +140,7 @@ func TestMTLSAuthenticator_PathBasedAuthentication(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create mTLS config with path patterns using file-based CA
 			config := map[string]interface{}{
-				"caPath":       caPath,  // Use file-based CA as original code expects
+				"caPath":       caPath, // Use file-based CA as original code expects
 				"pathPatterns": tt.pathPatterns,
 			}
 
@@ -319,7 +320,7 @@ func TestMTLSAuthenticator_InvalidPathPattern(t *testing.T) {
 	}
 }
 
-// Test path matching logic without requiring certificate validation
+// Test path matching logic without requiring certificate validation.
 func TestMTLSAuthenticator_PathMatchingLogic(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -338,7 +339,7 @@ func TestMTLSAuthenticator_PathMatchingLogic(t *testing.T) {
 		{
 			name:         "pattern_matches_requires_mtls",
 			pathPatterns: []string{"/api/.*/receive"},
-			requestPath:  "/api/metrics/v1/receive", 
+			requestPath:  "/api/metrics/v1/receive",
 			expectSkip:   false,
 			description:  "Matching pattern requires mTLS",
 		},
@@ -379,7 +380,7 @@ func TestMTLSAuthenticator_PathMatchingLogic(t *testing.T) {
 			}
 
 			middleware := authenticator.Middleware()
-			
+
 			handlerCalled := false
 			testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				handlerCalled = true
@@ -413,7 +414,7 @@ func TestMTLSAuthenticator_PathMatchingLogic(t *testing.T) {
 	}
 }
 
-// Test both CA configuration methods work correctly
+// Test both CA configuration methods work correctly.
 func TestMTLSAuthenticator_CAConfiguration(t *testing.T) {
 	// Test file-based CA configuration
 	t.Run("file_based_ca", func(t *testing.T) {
@@ -449,7 +450,7 @@ func TestMTLSAuthenticator_CAConfiguration(t *testing.T) {
 		}
 
 		config := map[string]interface{}{
-			"ca": caPEM,  // Direct CA data
+			"ca": caPEM, // Direct CA data
 		}
 
 		logger := log.NewNopLogger()
@@ -465,4 +466,3 @@ func TestMTLSAuthenticator_CAConfiguration(t *testing.T) {
 		}
 	})
 }
-
