@@ -42,11 +42,11 @@ func init() {
 
 // oidcConfig represents the oidc authenticator config.
 type oidcConfig struct {
-	ClientID      string   `json:"clientID"`
-	ClientSecret  string   `json:"clientSecret"`
-	GroupClaim    string   `json:"groupClaim"`
-	IssuerRawCA   []byte   `json:"issuerCA"`
-	IssuerCAPath  string   `json:"issuerCAPath"`
+	ClientID      string `json:"clientID"`
+	ClientSecret  string `json:"clientSecret"`
+	GroupClaim    string `json:"groupClaim"`
+	IssuerRawCA   []byte `json:"issuerCA"`
+	IssuerCAPath  string `json:"issuerCAPath"`
 	issuerCA      *x509.Certificate
 	IssuerURL     string   `json:"issuerURL"`
 	RedirectURL   string   `json:"redirectURL"`
@@ -299,7 +299,7 @@ func (a oidcAuthenticator) Middleware() Middleware {
 						break
 					}
 				}
-				
+
 				// If path doesn't match, skip OIDC enforcement
 				if !pathMatches {
 					next.ServeHTTP(w, r)

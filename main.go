@@ -1605,7 +1605,6 @@ func tenantAuthenticatorConfig(t *tenant) (map[string]interface{}, string, error
 	}
 }
 
-
 type otelErrorHandler struct {
 	logger log.Logger
 }
