@@ -23,4 +23,3 @@ vendor
 e2e_*
 
 .buildxcache/
-.claude/*
