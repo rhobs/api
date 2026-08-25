@@ -109,6 +109,7 @@ type config struct {
 	probes          probesConfig
 	middleware      middlewareConfig
 	internalTracing internalTracingConfig
+	enableThrottle  bool
 }
 
 type debugConfig struct {
@@ -222,7 +223,6 @@ type middlewareConfig struct {
 	concurrentRequestLimit            int
 	backLogLimitConcurrentRequests    int
 	backLogDurationConcurrentRequests time.Duration
-	enableThrottle                    bool
 }
 
 type internalTracingConfig struct {
@@ -336,8 +336,8 @@ func main() {
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 	)
 
-	var throttleMetrics
-	if cfg.middleware.enableThrottle {
+	var throttleMetrics *throttle.Metrics
+	if cfg.enableThrottle {
 		throttleMetrics = throttle.NewMetrics(reg)
 	}
 
@@ -787,9 +787,7 @@ func main() {
 					}
 
 					const matchParamName = "match[]"
-					r.Mount("/api/metrics/v1/{tenant}", metricsv1.NewHandler(
-						eps,
-						metricsUpstreamClientOptions,
+					metricsOpts := []metricsv1.HandlerOption{
 						metricsv1.WithLogger(logger),
 						metricsv1.WithRegistry(reg),
 						metricsv1.WithHandlerInstrumenter(instrumenter),
@@ -821,6 +819,18 @@ func main() {
 						metricsv1.WithAlertmanagerSilenceIDWriteMiddleware(
 							authorization.WithAuthorizers(authorizers, rbac.Write, "metrics"),
 						),
+					}
+
+					if cfg.enableThrottle {
+						mtc := throttle.DefaultConfig()
+						mtc.Metrics = throttleMetrics.Handler("metrics")
+						metricsOpts = append(metricsOpts, metricsv1.WithWriteMiddleware(throttle.New(mtc).Handler()))
+					}
+
+					r.Mount("/api/metrics/v1/{tenant}", metricsv1.NewHandler(
+						eps,
+						metricsUpstreamClientOptions,
+						metricsOpts...,
 					),
 					)
 				})
@@ -849,6 +859,33 @@ func main() {
 
 				r.Group(func(r chi.Router) {
 					r.Use(middleware.Timeout(cfg.logs.upstreamWriteTimeout))
+
+					logsOpts := []logsv1.HandlerOption{
+						logsv1.Logger(logger),
+						logsv1.WithRegistry(reg),
+						logsv1.WithHandlerInstrumenter(instrumenter),
+						logsv1.WithSpanRoutePrefix("/api/logs/v1/{tenant}"),
+						logsv1.WithGlobalMiddleware(authentication.WithTenantMiddlewares(pm.Middlewares)),
+						logsv1.WithGlobalMiddleware(authentication.EnforceAuthentication()),
+						logsv1.WithGlobalMiddleware(authentication.WithTenantHeader(cfg.logs.tenantHeader, tenantIDs)),
+						logsv1.WithReadMiddleware(authorization.WithLogsStreamSelectorsExtractor(logger, cfg.logs.authExtractSelectors)),
+						logsv1.WithReadMiddleware(authorization.WithAuthorizers(authorizers, rbac.Read, "logs")),
+						logsv1.WithReadMiddleware(logsv1.WithEnforceAuthorizationLabels()),
+						logsv1.WithWriteMiddleware(authorization.WithAuthorizers(authorizers, rbac.Write, "logs")),
+						logsv1.WithRulesLabelFilters(cfg.logs.rulesLabelFilters),
+						logsv1.WithRulesReadMiddleware(logsv1.WithEnforceTenantAsRuleNamespace()),
+						logsv1.WithRulesReadMiddleware(logsv1.WithEnforceRulesAuthorizationLabels()),
+						logsv1.WithRulesReadMiddleware(logsv1.WithParametersAsLabelsFilterRules(cfg.logs.rulesLabelFilters)),
+						logsv1.WithRulesWriteMiddleware(logsv1.WithEnforceTenantAsRuleNamespace()),
+						logsv1.WithRulesWriteMiddleware(logsv1.WithEnforceRuleLabels(cfg.logs.tenantLabel)),
+					}
+
+					if cfg.enableThrottle {
+						ltc := throttle.DefaultConfig()
+						ltc.Metrics = throttleMetrics.Handler("logs")
+						logsOpts = append(logsOpts, logsv1.WithWriteMiddleware(throttle.New(ltc).Handler()))
+					}
+
 					r.Mount("/api/logs/v1/{tenant}",
 						stripTenantPrefix("/api/logs/v1",
 							logsv1.NewHandler(
@@ -858,23 +895,7 @@ func main() {
 								cfg.logs.rulesEndpoint,
 								cfg.logs.rulesReadOnly,
 								logsUpstreamClientOptions,
-								logsv1.Logger(logger),
-								logsv1.WithRegistry(reg),
-								logsv1.WithHandlerInstrumenter(instrumenter),
-								logsv1.WithSpanRoutePrefix("/api/logs/v1/{tenant}"),
-								logsv1.WithGlobalMiddleware(authentication.WithTenantMiddlewares(pm.Middlewares)),
-								logsv1.WithGlobalMiddleware(authentication.EnforceAuthentication()),
-								logsv1.WithGlobalMiddleware(authentication.WithTenantHeader(cfg.logs.tenantHeader, tenantIDs)),
-								logsv1.WithReadMiddleware(authorization.WithLogsStreamSelectorsExtractor(logger, cfg.logs.authExtractSelectors)),
-								logsv1.WithReadMiddleware(authorization.WithAuthorizers(authorizers, rbac.Read, "logs")),
-								logsv1.WithReadMiddleware(logsv1.WithEnforceAuthorizationLabels()),
-								logsv1.WithWriteMiddleware(authorization.WithAuthorizers(authorizers, rbac.Write, "logs")),
-								logsv1.WithRulesLabelFilters(cfg.logs.rulesLabelFilters),
-								logsv1.WithRulesReadMiddleware(logsv1.WithEnforceTenantAsRuleNamespace()),
-								logsv1.WithRulesReadMiddleware(logsv1.WithEnforceRulesAuthorizationLabels()),
-								logsv1.WithRulesReadMiddleware(logsv1.WithParametersAsLabelsFilterRules(cfg.logs.rulesLabelFilters)),
-								logsv1.WithRulesWriteMiddleware(logsv1.WithEnforceTenantAsRuleNamespace()),
-								logsv1.WithRulesWriteMiddleware(logsv1.WithEnforceRuleLabels(cfg.logs.tenantLabel)),
+								logsOpts...,
 							),
 						),
 					)
@@ -1358,7 +1379,7 @@ func parseFlags() (config, error) {
 		"The number of concurrent requests that can buffered.")
 	flag.DurationVar(&cfg.middleware.backLogDurationConcurrentRequests, "middleware.backlog-duration-concurrent-requests", 1*time.Millisecond,
 		"The time duration to buffer up concurrent requests.")
-	flag.BoolVar(&cfg.middleware.enableThrottle, "middleware.enable-throttle", false,
+	flag.BoolVar(&cfg.enableThrottle, "throttle.enable", false,
 		"Enable load shedding")
 
 	flag.Parse()
