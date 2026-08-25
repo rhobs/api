@@ -64,6 +64,8 @@ import (
 	"github.com/observatorium/api/server"
 	"github.com/observatorium/api/tls"
 	"github.com/observatorium/api/tracing"
+
+	"github.com/philipgough/throttle"
 )
 
 const (
@@ -220,6 +222,7 @@ type middlewareConfig struct {
 	concurrentRequestLimit            int
 	backLogLimitConcurrentRequests    int
 	backLogDurationConcurrentRequests time.Duration
+	enableThrottle                    bool
 }
 
 type internalTracingConfig struct {
@@ -332,6 +335,11 @@ func main() {
 		collectors.NewGoCollector(),
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 	)
+
+	var throttleMetrics
+	if cfg.middleware.enableThrottle {
+		throttleMetrics = throttle.NewMetrics(reg)
+	}
 
 	skippedTenants := promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
 		Namespace: "observatorium",
@@ -1350,6 +1358,8 @@ func parseFlags() (config, error) {
 		"The number of concurrent requests that can buffered.")
 	flag.DurationVar(&cfg.middleware.backLogDurationConcurrentRequests, "middleware.backlog-duration-concurrent-requests", 1*time.Millisecond,
 		"The time duration to buffer up concurrent requests.")
+	flag.BoolVar(&cfg.middleware.enableThrottle, "middleware.enable-throttle", false,
+		"Enable load shedding")
 
 	flag.Parse()
 
