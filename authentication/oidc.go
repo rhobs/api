@@ -434,6 +434,7 @@ func (a oidcAuthenticator) checkAuth(ctx context.Context, token string) (context
 	}
 
 	sub := idToken.Subject
+	usernameExtracted := false
 
 	if a.config.UsernameClaim != "" {
 		claims := map[string]interface{}{}
@@ -467,6 +468,7 @@ func (a oidcAuthenticator) checkAuth(ctx context.Context, token string) (context
 			}
 
 			sub = username
+			usernameExtracted = true
 		}
 	}
 
@@ -486,26 +488,30 @@ func (a oidcAuthenticator) checkAuth(ctx context.Context, token string) (context
 
 		rawGroup, ok := claims[a.config.GroupClaim]
 		if !ok {
-			const msg = "group cannot be empty"
+			if usernameExtracted {
+				level.Debug(a.logger).Log("msg", "group claim not found, proceeding with username")
+			} else {
+				const msg = "group cannot be empty"
 
-			level.Debug(a.logger).Log("msg", msg)
+				level.Debug(a.logger).Log("msg", msg)
 
-			return ctx, msg, http.StatusBadRequest, codes.PermissionDenied
-		}
-
-		switch v := rawGroup.(type) {
-		case string:
-			groups = append(groups, v)
-		case []string:
-			groups = v
-		case []interface{}:
-			groups = make([]string, 0, len(v))
-			for i := range v {
-				groups = append(groups, fmt.Sprintf("%v", v[i]))
+				return ctx, msg, http.StatusBadRequest, codes.PermissionDenied
 			}
-		}
+		} else {
+			switch v := rawGroup.(type) {
+			case string:
+				groups = append(groups, v)
+			case []string:
+				groups = v
+			case []interface{}:
+				groups = make([]string, 0, len(v))
+				for i := range v {
+					groups = append(groups, fmt.Sprintf("%v", v[i]))
+				}
+			}
 
-		ctx = context.WithValue(ctx, groupsKey, groups)
+			ctx = context.WithValue(ctx, groupsKey, groups)
+		}
 	}
 
 	return ctx, "", http.StatusOK, codes.OK
