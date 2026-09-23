@@ -447,23 +447,27 @@ func (a oidcAuthenticator) checkAuth(ctx context.Context, token string) (context
 
 		rawUsername, ok := claims[a.config.UsernameClaim]
 		if !ok {
-			const msg = "username cannot be empty"
+			if a.config.GroupClaim == "" {
+				const msg = "username cannot be empty"
 
-			level.Debug(a.logger).Log("msg", msg)
+				level.Debug(a.logger).Log("msg", msg)
 
-			return ctx, msg, http.StatusBadRequest, codes.PermissionDenied
+				return ctx, msg, http.StatusBadRequest, codes.PermissionDenied
+			}
+
+			level.Debug(a.logger).Log("msg", "username claim not found in token, proceeding with group claim")
+		} else {
+			username, ok := rawUsername.(string)
+			if !ok || username == "" {
+				const msg = "invalid username claim value"
+
+				level.Debug(a.logger).Log("msg", msg)
+
+				return ctx, msg, http.StatusBadRequest, codes.PermissionDenied
+			}
+
+			sub = username
 		}
-
-		username, ok := rawUsername.(string)
-		if !ok || username == "" {
-			const msg = "invalid username claim value"
-
-			level.Debug(a.logger).Log("msg", msg)
-
-			return ctx, msg, http.StatusBadRequest, codes.PermissionDenied
-		}
-
-		sub = username
 	}
 
 	ctx = context.WithValue(ctx, subjectKey, sub)
