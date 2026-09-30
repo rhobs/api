@@ -846,6 +846,8 @@ func main() {
 						logsOpts = append(logsOpts, logsv1.WithWriteMiddleware(throttle.New(ltc).Handler()))
 					}
 
+					logsOpts = append(logsOpts, logsv1.WithWriteMiddleware(writePathRedirectProtection))
+
 					r.Mount("/api/logs/v1/{tenant}",
 						stripTenantPrefix("/api/logs/v1",
 							logsv1.NewHandler(

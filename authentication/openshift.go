@@ -21,7 +21,6 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -239,8 +238,8 @@ func newOpenshiftAuthenticator(c map[string]interface{}, tenant string,
 	}
 
 	r := chi.NewRouter()
-	r.Handle(loginRoute, otelhttp.WithRouteTag(handlerPrefix+loginRoute, osAuthenticator.openshiftLoginHandler()))
-	r.Handle(callbackRoute, otelhttp.WithRouteTag(handlerPrefix+callbackRoute, osAuthenticator.openshiftCallbackHandler()))
+	r.Handle(loginRoute, osAuthenticator.openshiftLoginHandler())
+	r.Handle(callbackRoute, osAuthenticator.openshiftCallbackHandler())
 	osAuthenticator.handler = r
 
 	return osAuthenticator, nil

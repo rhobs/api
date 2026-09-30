@@ -148,10 +148,7 @@ func NewHandler(url *url.URL, tlsOptions *tls.UpstreamOptions, opts ...HandlerOp
 		})
 		r.Use(c.queryMiddlewares...)
 		r.Handle(QueryRoute,
-			otelhttp.WithRouteTag(
-				c.spanRoutePrefix+QueryRoute,
-				legacyProxy,
-			),
+			legacyProxy,
 		)
 	})
 	r.Group(func(r chi.Router) {
@@ -163,10 +160,7 @@ func NewHandler(url *url.URL, tlsOptions *tls.UpstreamOptions, opts ...HandlerOp
 		})
 		r.Use(c.queryMiddlewares...)
 		r.Handle(QueryRangeRoute,
-			otelhttp.WithRouteTag(
-				c.spanRoutePrefix+QueryRangeRoute,
-				legacyProxy,
-			),
+			legacyProxy,
 		)
 	})
 
