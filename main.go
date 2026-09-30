@@ -501,7 +501,7 @@ func main() {
 	}
 	{
 		if cfg.server.healthcheckURL != "" {
-			t := (http.DefaultTransport).(*http.Transport).Clone()
+			t := http.DefaultTransport.(*http.Transport).Clone()
 			t.TLSClientConfig = &stdtls.Config{
 				ServerName: cfg.tls.healthchecksServerName,
 			}
