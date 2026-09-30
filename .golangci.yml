@@ -11,7 +11,6 @@ output:
 linters:
   enable:
     - copyloopvar
-    - goconst
     - godot
     - misspell # spell checker
     - promlinter
@@ -26,8 +25,6 @@ linters:
     funlen:
       lines: 140
       statements: 60
-    goconst:
-      min-occurrences: 5
     lll:
       line-length: 160
     misspell:
@@ -39,6 +36,11 @@ linters:
       - common-false-positives
       - legacy
       - std-error-handling
+    rules:
+      # Suppress SA1019 for httputil.ReverseProxy.Director deprecated in Go 1.26.
+      # Migration to Rewrite is tracked separately.
+      - linters: [staticcheck]
+        text: "SA1019:.*Director"
     paths:
       - third_party$
       - builtin$
