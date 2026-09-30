@@ -78,10 +78,11 @@ func (w *caCertificateWatcher) loadCA() error {
 		}
 		w.mutex.Lock()
 		defer w.mutex.Unlock()
-		if !w.certPool.AppendCertsFromPEM(caPEM) {
-			level.Error(w.logger).Log("failed to parse CA %s", w.CAPath)
-			return err
+		newPool := w.certPool.Clone()
+		if !newPool.AppendCertsFromPEM(caPEM) {
+			return fmt.Errorf("failed to append CA certificate")
 		}
+		w.certPool = newPool
 	}
 	return nil
 }
