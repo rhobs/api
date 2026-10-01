@@ -234,15 +234,15 @@ type tenant struct {
 	Name string `json:"name"`
 	ID   string `json:"id"`
 	OIDC *struct {
-		ClientID      string `json:"clientID"`
-		ClientSecret  string `json:"clientSecret"`
-		GroupClaim    string `json:"groupClaim"`
-		IssuerRawCA   []byte `json:"issuerCA"`
-		IssuerCAPath  string `json:"issuerCAPath"`
+		ClientID      string                       `json:"clientID"`
+		ClientSecret  string                       `json:"clientSecret"`
+		GroupClaim    authentication.StringOrSlice `json:"groupClaim"`
+		IssuerRawCA   []byte                       `json:"issuerCA"`
+		IssuerCAPath  string                       `json:"issuerCAPath"`
 		issuerCA      *x509.Certificate
-		IssuerURL     string `json:"issuerURL"`
-		RedirectURL   string `json:"redirectURL"`
-		UsernameClaim string `json:"usernameClaim"`
+		IssuerURL     string                       `json:"issuerURL"`
+		RedirectURL   string                       `json:"redirectURL"`
+		UsernameClaim authentication.StringOrSlice `json:"usernameClaim"`
 		config        map[string]interface{}
 	} `json:"oidc"`
 	OpenShift *struct {
