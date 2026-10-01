@@ -68,7 +68,27 @@ func newTestOIDCEnv(t *testing.T) *testOIDCEnv {
 
 // newAuthenticator creates an oidcAuthenticator wired to the test OIDC server
 // with the given username/group claim configuration.
+// Each claim parameter accepts a single string (backward compat) which is
+// converted to a one-element StringOrSlice, or an empty string which stays
+// as a nil/empty slice.
 func (env *testOIDCEnv) newAuthenticator(t *testing.T, usernameClaim, groupClaim string) *oidcAuthenticator {
+	t.Helper()
+
+	var uc, gc StringOrSlice
+	if usernameClaim != "" {
+		uc = StringOrSlice{usernameClaim}
+	}
+
+	if groupClaim != "" {
+		gc = StringOrSlice{groupClaim}
+	}
+
+	return env.newAuthenticatorFromSlices(t, uc, gc)
+}
+
+// newAuthenticatorFromSlices creates an oidcAuthenticator with full
+// StringOrSlice claim lists (for testing ordered claim list behavior).
+func (env *testOIDCEnv) newAuthenticatorFromSlices(t *testing.T, usernameClaim, groupClaim StringOrSlice) *oidcAuthenticator {
 	t.Helper()
 
 	ctx := oidc.ClientContext(context.Background(), env.server.Client())
@@ -306,6 +326,212 @@ func TestCheckAuth(t *testing.T) {
 					if g != tt.wantGroups[i] {
 						t.Errorf("groups[%d] = %q, want %q", i, g, tt.wantGroups[i])
 					}
+				}
+			}
+		})
+	}
+}
+
+func TestCheckAuthClaimLists(t *testing.T) {
+	env := newTestOIDCEnv(t)
+	defer env.server.Close()
+
+	tests := []struct {
+		name          string
+		usernameClaim StringOrSlice
+		groupClaim    StringOrSlice
+		extraClaims   map[string]interface{}
+		wantCode      int
+		wantSubject   string
+		wantGroups    []string
+	}{
+		{
+			name:          "username list first claim matches",
+			usernameClaim: StringOrSlice{"preferred_username", "email"},
+			groupClaim:    StringOrSlice{"groups"},
+			extraClaims: map[string]interface{}{
+				"preferred_username": "alice",
+				"email":              "alice@example.com",
+				"groups":             []interface{}{"devs"},
+			},
+			wantCode:    http.StatusOK,
+			wantSubject: "alice",
+			wantGroups:  []string{"devs"},
+		},
+		{
+			name:          "username list second claim matches when first absent",
+			usernameClaim: StringOrSlice{"preferred_username", "email"},
+			groupClaim:    StringOrSlice{"groups"},
+			extraClaims: map[string]interface{}{
+				// preferred_username absent
+				"email":  "bob@example.com",
+				"groups": []interface{}{"ops"},
+			},
+			wantCode:    http.StatusOK,
+			wantSubject: "bob@example.com",
+			wantGroups:  []string{"ops"},
+		},
+		{
+			name:          "group list first claim matches",
+			usernameClaim: StringOrSlice{"preferred_username"},
+			groupClaim:    StringOrSlice{"org_id", "rh-org-id", "groups"},
+			extraClaims: map[string]interface{}{
+				"preferred_username": "carol",
+				"org_id":             "org-123",
+				"groups":             []interface{}{"team-a"},
+			},
+			wantCode:    http.StatusOK,
+			wantSubject: "carol",
+			wantGroups:  []string{"org-123"},
+		},
+		{
+			name:          "group list second claim matches when first absent",
+			usernameClaim: StringOrSlice{"preferred_username"},
+			groupClaim:    StringOrSlice{"org_id", "rh-org-id", "groups"},
+			extraClaims: map[string]interface{}{
+				"preferred_username": "dave",
+				// org_id absent
+				"rh-org-id": "rh-456",
+				"groups":    []interface{}{"team-b"},
+			},
+			wantCode:    http.StatusOK,
+			wantSubject: "dave",
+			wantGroups:  []string{"rh-456"},
+		},
+		{
+			name:          "no claims match across both lists returns 400",
+			usernameClaim: StringOrSlice{"preferred_username", "email"},
+			groupClaim:    StringOrSlice{"org_id", "rh-org-id"},
+			extraClaims:   map[string]interface{}{
+				// none of the configured claims are present
+			},
+			wantCode: http.StatusBadRequest,
+		},
+		{
+			name:          "mixed lists only group matches proceeds OK",
+			usernameClaim: StringOrSlice{"preferred_username", "email"},
+			groupClaim:    StringOrSlice{"org_id", "groups"},
+			extraClaims: map[string]interface{}{
+				// no username claims present
+				"groups": []interface{}{"sre-team"},
+			},
+			wantCode:    http.StatusOK,
+			wantSubject: "test-subject", // falls back to token subject
+			wantGroups:  []string{"sre-team"},
+		},
+		{
+			name:          "mixed lists only username matches proceeds OK",
+			usernameClaim: StringOrSlice{"email"},
+			groupClaim:    StringOrSlice{"org_id", "rh-org-id"},
+			extraClaims: map[string]interface{}{
+				"email": "eve@example.com",
+				// no group claims present
+			},
+			wantCode:    http.StatusOK,
+			wantSubject: "eve@example.com",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			auth := env.newAuthenticatorFromSlices(t, tt.usernameClaim, tt.groupClaim)
+			token := env.signToken(t, tt.extraClaims)
+
+			ctx, _, httpCode, _ := auth.checkAuth(context.Background(), token)
+
+			if httpCode != tt.wantCode {
+				t.Fatalf("HTTP status = %d, want %d", httpCode, tt.wantCode)
+			}
+
+			if tt.wantCode != http.StatusOK {
+				return
+			}
+
+			if tt.wantSubject != "" {
+				gotSubject, ok := GetSubject(ctx)
+				if !ok {
+					t.Fatal("expected subject in context, got none")
+				}
+
+				if gotSubject != tt.wantSubject {
+					t.Errorf("subject = %q, want %q", gotSubject, tt.wantSubject)
+				}
+			}
+
+			if tt.wantGroups != nil {
+				gotGroups, ok := GetGroups(ctx)
+				if !ok {
+					t.Fatal("expected groups in context, got none")
+				}
+
+				if len(gotGroups) != len(tt.wantGroups) {
+					t.Fatalf("got %d groups %v, want %d groups %v",
+						len(gotGroups), gotGroups, len(tt.wantGroups), tt.wantGroups)
+				}
+
+				for i, g := range gotGroups {
+					if g != tt.wantGroups[i] {
+						t.Errorf("groups[%d] = %q, want %q", i, g, tt.wantGroups[i])
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestStringOrSliceUnmarshalJSON(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    StringOrSlice
+		wantErr bool
+	}{
+		{
+			name:  "single string",
+			input: `"preferred_username"`,
+			want:  StringOrSlice{"preferred_username"},
+		},
+		{
+			name:  "array of strings",
+			input: `["preferred_username","email"]`,
+			want:  StringOrSlice{"preferred_username", "email"},
+		},
+		{
+			name:  "empty array",
+			input: `[]`,
+			want:  StringOrSlice{},
+		},
+		{
+			name:    "invalid type number",
+			input:   `42`,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var got StringOrSlice
+			err := got.UnmarshalJSON([]byte(tt.input))
+
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if len(got) != len(tt.want) {
+				t.Fatalf("got %v, want %v", got, tt.want)
+			}
+
+			for i, v := range got {
+				if v != tt.want[i] {
+					t.Errorf("element %d = %q, want %q", i, v, tt.want[i])
 				}
 			}
 		})
