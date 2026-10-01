@@ -10,6 +10,7 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-chi/chi/v5 v5.2.2
 	github.com/go-chi/httprate v0.14.1
+	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/go-kit/log v0.2.1
 	github.com/go-openapi/runtime v0.32.6
 	github.com/go-openapi/strfmt v0.27.0
@@ -67,7 +68,6 @@ require (
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
-	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
