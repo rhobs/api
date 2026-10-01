@@ -33,6 +33,7 @@ import (
 	"github.com/metalmatze/signal/internalserver"
 	grpcproxy "github.com/mwitkow/grpc-proxy/proxy"
 	"github.com/oklog/run"
+	"github.com/philipgough/throttle"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	promclientversion "github.com/prometheus/client_golang/prometheus/collectors/version"
@@ -64,8 +65,6 @@ import (
 	"github.com/observatorium/api/server"
 	"github.com/observatorium/api/tls"
 	"github.com/observatorium/api/tracing"
-
-	"github.com/philipgough/throttle"
 )
 
 const (
@@ -827,7 +826,7 @@ func main() {
 						logsv1.WithHandlerInstrumenter(instrumenter),
 						logsv1.WithSpanRoutePrefix("/api/logs/v1/{tenant}"),
 						logsv1.WithGlobalMiddleware(authentication.WithTenantMiddlewares(pm.Middlewares)),
-						logsv1.WithGlobalMiddleware(authentication.EnforceAuthentication()),
+						logsv1.WithWriteMiddleware(writePathRedirectProtection),
 						logsv1.WithGlobalMiddleware(authentication.WithTenantHeader(cfg.logs.tenantHeader, tenantIDs)),
 						logsv1.WithReadMiddleware(authorization.WithLogsStreamSelectorsExtractor(logger, cfg.logs.authExtractSelectors)),
 						logsv1.WithReadMiddleware(authorization.WithAuthorizers(authorizers, rbac.Read, "logs")),
@@ -856,23 +855,6 @@ func main() {
 								cfg.logs.rulesEndpoint,
 								cfg.logs.rulesReadOnly,
 								logsUpstreamClientOptions,
-								logsv1.Logger(logger),
-								logsv1.WithRegistry(reg),
-								logsv1.WithHandlerInstrumenter(instrumenter),
-								logsv1.WithSpanRoutePrefix("/api/logs/v1/{tenant}"),
-								logsv1.WithWriteMiddleware(writePathRedirectProtection),
-								logsv1.WithGlobalMiddleware(authentication.WithTenantMiddlewares(pm.Middlewares)),
-								logsv1.WithGlobalMiddleware(authentication.WithTenantHeader(cfg.logs.tenantHeader, tenantIDs)),
-								logsv1.WithReadMiddleware(authorization.WithLogsStreamSelectorsExtractor(logger, cfg.logs.authExtractSelectors)),
-								logsv1.WithReadMiddleware(authorization.WithAuthorizers(authorizers, rbac.Read, "logs")),
-								logsv1.WithReadMiddleware(logsv1.WithEnforceAuthorizationLabels()),
-								logsv1.WithWriteMiddleware(authorization.WithAuthorizers(authorizers, rbac.Write, "logs")),
-								logsv1.WithRulesLabelFilters(cfg.logs.rulesLabelFilters),
-								logsv1.WithRulesReadMiddleware(logsv1.WithEnforceTenantAsRuleNamespace()),
-								logsv1.WithRulesReadMiddleware(logsv1.WithEnforceRulesAuthorizationLabels()),
-								logsv1.WithRulesReadMiddleware(logsv1.WithParametersAsLabelsFilterRules(cfg.logs.rulesLabelFilters)),
-								logsv1.WithRulesWriteMiddleware(logsv1.WithEnforceTenantAsRuleNamespace()),
-								logsv1.WithRulesWriteMiddleware(logsv1.WithEnforceRuleLabels(cfg.logs.tenantLabel)),
 								logsOpts...,
 							),
 						),
