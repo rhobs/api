@@ -74,7 +74,7 @@ func stringOrSliceDecodeHook() mapstructure.DecodeHookFunc {
 
 		switch v := data.(type) {
 		case string:
-			return []string{v}, nil
+			return StringOrSlice{v}, nil
 		case []interface{}:
 			result := make([]string, len(v))
 			for i, elem := range v {
@@ -86,7 +86,7 @@ func stringOrSliceDecodeHook() mapstructure.DecodeHookFunc {
 				result[i] = s
 			}
 
-			return result, nil
+			return StringOrSlice(result), nil
 		case []string:
 			return v, nil
 		default:
