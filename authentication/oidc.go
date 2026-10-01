@@ -22,7 +22,6 @@ import (
 	grpc_middleware_auth "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
 	"github.com/mitchellh/mapstructure"
 	"github.com/prometheus/client_golang/prometheus"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"golang.org/x/oauth2"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -160,8 +159,8 @@ func newOIDCAuthenticator(c map[string]interface{}, tenant string,
 	}
 
 	r := chi.NewRouter()
-	r.Handle(loginRoute, otelhttp.WithRouteTag(handlerPrefix+loginRoute, oidcProvider.oidcLoginHandler(&oauth2Config)))
-	r.Handle(callbackRoute, otelhttp.WithRouteTag(handlerPrefix+callbackRoute, oidcProvider.oidcCallBackHandler()))
+	r.Handle(loginRoute, oidcProvider.oidcLoginHandler(&oauth2Config))
+	r.Handle(callbackRoute, oidcProvider.oidcCallBackHandler())
 	oidcProvider.handler = r
 
 	return oidcProvider, nil

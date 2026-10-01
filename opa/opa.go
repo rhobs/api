@@ -281,7 +281,7 @@ func (a *inProcessAuthorizer) Authorize(
 		data    string
 	)
 
-	switch res := (res[0].Expressions[0].Value).(type) {
+	switch res := res[0].Expressions[0].Value.(type) {
 	case bool:
 		allowed = res
 	case map[string]string:

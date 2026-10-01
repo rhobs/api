@@ -105,7 +105,7 @@ func WithEnforceTenancyOnSilenceMatchers(label string) func(http.Handler) http.H
 
 			var falsy bool
 			modified := models.Matchers{
-				&models.Matcher{Name: &(label), Value: &id, IsRegex: &falsy},
+				&models.Matcher{Name: &label, Value: &id, IsRegex: &falsy},
 			}
 			for _, m := range sil.Matchers {
 				if m.Name != nil && *m.Name == label {

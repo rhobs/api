@@ -172,6 +172,8 @@ Usage of ./observatorium-api:
     	Global server read timeout. (default 12m0s)
   -tenants.config string
     	Path to the tenants file. (default "tenants.yaml")
+  -throttle.enable
+    	Enable load shedding
   -tls.cipher-suites string
     	Comma-separated list of cipher suites for the server. Values are from tls package constants (https://golang.org/pkg/crypto/tls/#pkg-constants). If omitted, the default Go cipher suites will be used. Note that TLS 1.3 ciphersuites are not configurable.
   -tls.client-auth-type string

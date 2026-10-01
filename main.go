@@ -501,7 +501,7 @@ func main() {
 	}
 	{
 		if cfg.server.healthcheckURL != "" {
-			t := (http.DefaultTransport).(*http.Transport).Clone()
+			t := http.DefaultTransport.(*http.Transport).Clone()
 			t.TLSClientConfig = &stdtls.Config{
 				ServerName: cfg.tls.healthchecksServerName,
 			}
@@ -845,6 +845,8 @@ func main() {
 						ltc.Metrics = throttleMetrics.Handler("logs")
 						logsOpts = append(logsOpts, logsv1.WithWriteMiddleware(throttle.New(ltc).Handler()))
 					}
+
+					logsOpts = append(logsOpts, logsv1.WithWriteMiddleware(writePathRedirectProtection))
 
 					r.Mount("/api/logs/v1/{tenant}",
 						stripTenantPrefix("/api/logs/v1",
