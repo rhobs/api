@@ -7,12 +7,14 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-kit/log"
+	"github.com/mitchellh/mapstructure"
 )
 
 // testOIDCEnv holds a test OIDC server, signing key, and helpers for
@@ -473,6 +475,215 @@ func TestCheckAuthClaimLists(t *testing.T) {
 					if g != tt.wantGroups[i] {
 						t.Errorf("groups[%d] = %q, want %q", i, g, tt.wantGroups[i])
 					}
+				}
+			}
+		})
+	}
+}
+
+// newAuthenticatorViaMapstructure creates an oidcAuthenticator by running
+// the raw config map through mapstructure.Decode with stringOrSliceDecodeHook,
+// exactly as the production code path does.  This exercises the decode hook
+// for StringOrSlice fields (UsernameClaim, GroupClaim) where values may arrive
+// as plain strings — including JSON-encoded arrays that config generators
+// sometimes produce.
+func (env *testOIDCEnv) newAuthenticatorViaMapstructure(t *testing.T, rawConfig map[string]interface{}) *oidcAuthenticator {
+	t.Helper()
+
+	var config oidcConfig
+
+	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
+		DecodeHook: stringOrSliceDecodeHook(),
+		Result:     &config,
+	})
+	if err != nil {
+		t.Fatalf("create mapstructure decoder: %v", err)
+	}
+
+	if err := decoder.Decode(rawConfig); err != nil {
+		t.Fatalf("mapstructure decode: %v", err)
+	}
+
+	ctx := oidc.ClientContext(context.Background(), env.server.Client())
+
+	provider, err := oidc.NewProvider(ctx, env.issuerURL)
+	if err != nil {
+		t.Fatalf("create OIDC provider: %v", err)
+	}
+
+	verifier := provider.Verifier(&oidc.Config{
+		ClientID:          "test-client",
+		SkipClientIDCheck: true,
+	})
+
+	return &oidcAuthenticator{
+		tenant:   "test-tenant",
+		logger:   log.NewNopLogger(),
+		config:   config,
+		provider: provider,
+		verifier: verifier,
+		client:   env.server.Client(),
+	}
+}
+
+func TestCheckAuthMapstructureJSONArrayString(t *testing.T) {
+	env := newTestOIDCEnv(t)
+	defer env.server.Close()
+
+	tests := []struct {
+		name        string
+		rawConfig   map[string]interface{}
+		extraClaims map[string]interface{}
+		wantCode    int
+		wantSubject string
+		wantGroups  []string
+	}{
+		{
+			name: "groupClaim JSON array string JWT has second claim",
+			rawConfig: map[string]interface{}{
+				"clientID":      "test-client",
+				"issuerURL":     "PLACEHOLDER",
+				"usernameClaim": "preferred_username",
+				"groupClaim":    `["org_id", "rh-org-id"]`,
+			},
+			extraClaims: map[string]interface{}{
+				"preferred_username": "testuser",
+				"rh-org-id":          "12541229",
+			},
+			wantCode:    http.StatusOK,
+			wantSubject: "testuser",
+			wantGroups:  []string{"12541229"},
+		},
+		{
+			name: "groupClaim JSON array string JWT has first claim",
+			rawConfig: map[string]interface{}{
+				"clientID":      "test-client",
+				"issuerURL":     "PLACEHOLDER",
+				"usernameClaim": "preferred_username",
+				"groupClaim":    `["org_id", "rh-org-id"]`,
+			},
+			extraClaims: map[string]interface{}{
+				"preferred_username": "testuser",
+				"org_id":             "6340056",
+			},
+			wantCode:    http.StatusOK,
+			wantSubject: "testuser",
+			wantGroups:  []string{"6340056"},
+		},
+		{
+			name: "usernameClaim JSON array string JWT has fallback claim",
+			rawConfig: map[string]interface{}{
+				"clientID":      "test-client",
+				"issuerURL":     "PLACEHOLDER",
+				"usernameClaim": `["email", "preferred_username"]`,
+				"groupClaim":    "groups",
+			},
+			extraClaims: map[string]interface{}{
+				"preferred_username": "user@example.com",
+				"groups":             []interface{}{"team-a"},
+			},
+			wantCode:    http.StatusOK,
+			wantSubject: "user@example.com",
+			wantGroups:  []string{"team-a"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.rawConfig["issuerURL"] = env.issuerURL
+
+			auth := env.newAuthenticatorViaMapstructure(t, tt.rawConfig)
+			token := env.signToken(t, tt.extraClaims)
+
+			ctx, _, httpCode, _ := auth.checkAuth(context.Background(), token)
+
+			if httpCode != tt.wantCode {
+				t.Fatalf("HTTP status = %d, want %d", httpCode, tt.wantCode)
+			}
+
+			if tt.wantCode != http.StatusOK {
+				return
+			}
+
+			if tt.wantSubject != "" {
+				gotSubject, ok := GetSubject(ctx)
+				if !ok {
+					t.Fatal("expected subject in context, got none")
+				}
+
+				if gotSubject != tt.wantSubject {
+					t.Errorf("subject = %q, want %q", gotSubject, tt.wantSubject)
+				}
+			}
+
+			if tt.wantGroups != nil {
+				gotGroups, ok := GetGroups(ctx)
+				if !ok {
+					t.Fatal("expected groups in context, got none")
+				}
+
+				if len(gotGroups) != len(tt.wantGroups) {
+					t.Fatalf("got %d groups %v, want %d groups %v",
+						len(gotGroups), gotGroups, len(tt.wantGroups), tt.wantGroups)
+				}
+
+				for i, g := range gotGroups {
+					if g != tt.wantGroups[i] {
+						t.Errorf("groups[%d] = %q, want %q", i, g, tt.wantGroups[i])
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestStringOrSliceDecodeHookJSONArrayString(t *testing.T) {
+	hook := stringOrSliceDecodeHook()
+	fn := hook.(func(reflect.Type, reflect.Type, interface{}) (interface{}, error))
+
+	targetType := reflect.TypeOf(StringOrSlice{})
+
+	tests := []struct {
+		name  string
+		input interface{}
+		want  StringOrSlice
+	}{
+		{
+			name:  "JSON array string is parsed into slice",
+			input: `["org_id", "rh-org-id"]`,
+			want:  StringOrSlice{"org_id", "rh-org-id"},
+		},
+		{
+			name:  "plain string stays as single-element slice",
+			input: "preferred_username",
+			want:  StringOrSlice{"preferred_username"},
+		},
+		{
+			name:  "string that is not valid JSON array stays as single-element",
+			input: "not-json",
+			want:  StringOrSlice{"not-json"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := fn(reflect.TypeOf(tt.input), targetType, tt.input)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			got, ok := result.(StringOrSlice)
+			if !ok {
+				t.Fatalf("expected StringOrSlice, got %T", result)
+			}
+
+			if len(got) != len(tt.want) {
+				t.Fatalf("got %v (len %d), want %v (len %d)", got, len(got), tt.want, len(tt.want))
+			}
+
+			for i, v := range got {
+				if v != tt.want[i] {
+					t.Errorf("element %d = %q, want %q", i, v, tt.want[i])
 				}
 			}
 		})
