@@ -517,9 +517,9 @@ func (env *testOIDCEnv) newAuthenticatorViaMapstructure(t *testing.T, rawConfig 
 	})
 
 	return &oidcAuthenticator{
-		tenant: "test-tenant",
-		logger: log.NewNopLogger(),
-		config: config,
+		tenant:   "test-tenant",
+		logger:   log.NewNopLogger(),
+		config:   config,
 		provider: provider,
 		verifier: verifier,
 		client:   env.server.Client(),
