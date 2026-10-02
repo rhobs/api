@@ -74,6 +74,13 @@ func stringOrSliceDecodeHook() mapstructure.DecodeHookFunc {
 
 		switch v := data.(type) {
 		case string:
+			// Check if the string is a JSON-encoded array (e.g. from config generators
+			// that store arrays in string-typed fields).
+			var arr []string
+			if err := json.Unmarshal([]byte(v), &arr); err == nil {
+				return StringOrSlice(arr), nil
+			}
+
 			return StringOrSlice{v}, nil
 		case []interface{}:
 			result := make([]string, len(v))
